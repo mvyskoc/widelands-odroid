@@ -99,8 +99,8 @@ bool RealFSImpl::IsWritable() const {
  */
 // note: the Win32 version may be broken, feel free to fix it
 int32_t RealFSImpl::FindFiles
-	(std::string const & path,
-	 std::string const & pattern,
+	(const std::string & path,
+	 const std::string & pattern,
 	 filenameset_t     * results,
 	 uint32_t)
 {
@@ -108,14 +108,11 @@ int32_t RealFSImpl::FindFiles
 	std::string buf;
 	struct _finddata_t c_file;
 	long hFile;
-	int32_t count;
 
 	if (path.size())
 		buf = m_directory + '\\' + path + '\\' + pattern;
 	else
 		buf = m_directory + '\\' + pattern;
-
-	count = 0;
 
 	hFile = _findfirst(buf.c_str(), &c_file);
 	if (hFile == -1)
@@ -123,17 +120,20 @@ int32_t RealFSImpl::FindFiles
 
 	std::string realpath = path;
 
-	if (not pattern.compare(0, 3, "../")) {
+	// Check if path is relative - both \ and / are possibly used depending on the file we work on,
+	// so we have to check for both.
+	if ((not pattern.compare(0, 3, "../")) || (not pattern.compare(0, 3, "..\\"))) {
 		// Workaround: If pattern is a relative we need to fix the path
 		std::string m_root_save(m_root); // save orginal m_root
-		m_root = path;
+		m_root = FS_CanonicalizeName(path);
 		realpath = FS_CanonicalizeName(pattern);
 		realpath = realpath.substr(0, realpath.rfind('\\'));
 		m_root = m_root_save; // reset m_root
 	}
 
+	if (!realpath.empty()) realpath.append("\\");
 	do {
-		results->insert(realpath + '\\' + c_file.name);
+		results->insert(realpath + c_file.name);
 	} while (_findnext(hFile, &c_file) == 0);
 
 	_findclose(hFile);
@@ -145,12 +145,18 @@ int32_t RealFSImpl::FindFiles
 	int32_t i, count;
 	int32_t ofs;
 
-	if (path.size())
-		buf = m_directory + '/' + path + '/' + pattern;
-	else
+	if (path.size()) {
+		if (pathIsAbsolute(path)) {
+			buf = path + '/' + pattern;
+			ofs = 0;
+		} else {
+			buf = m_directory + '/' + path + '/' + pattern;
+			ofs = m_directory.length() + 1;
+		}
+	} else {
 		buf = m_directory + '/' + pattern;
-	ofs = m_directory.length() + 1;
-
+		ofs = m_directory.length() + 1;
+	}
 	if (glob(buf.c_str(), 0, 0, &gl))
 		return 0;
 
@@ -266,10 +272,6 @@ void RealFSImpl::m_unlink_directory(std::string const & file) {
 		 ++pname)
 	{
 		std::string filename = FS_Filename(pname->c_str());
-		// HACK: ignore SVN directory for this might be a
-		// campaign directory or similar
-		if (filename == ".svn")
-			continue;
 		if (filename == "..")
 			continue;
 		if (filename == ".")
@@ -294,23 +296,29 @@ void RealFSImpl::m_unlink_directory(std::string const & file) {
  * Create this directory if it doesn't exist, throws an error
  * if the dir can't be created or if a file with this name exists
  */
-void RealFSImpl::EnsureDirectoryExists(std::string const & dirname) {
-	FileSystemPath fspath(FS_CanonicalizeName(dirname));
-	if (fspath.m_exists and fspath.m_isDirectory)
-		return; //  ok, dir is already there
+void RealFSImpl::EnsureDirectoryExists(const std::string & dirname)
+{
 	try {
-		MakeDirectory(dirname);
-	} catch (DirectoryCannotCreate_error const & e) {
-		// need more work to do it right
-		//  iterate through all possible directories
-		size_t it = 0;
-		while (it != dirname.size() && it != std::string::npos) {
-			it = dirname.find('/', it);
-			EnsureDirectoryExists(dirname.substr(0, it));
-			++it; //make sure we don't keep finding the same directories
+		std::string::size_type it = 0;
+		while (it < dirname.size()) {
+			it = dirname.find(m_filesep, it);
+
+			FileSystemPath fspath(FS_CanonicalizeName(dirname.substr(0, it)));
+			if (fspath.m_exists and !fspath.m_isDirectory)
+				throw wexception
+					("%s exists and is not a directory",
+					 dirname.substr(0, it).c_str());
+			if (!fspath.m_exists)
+				MakeDirectory(dirname.substr(0, it));
+
+			if (it == std::string::npos)
+				break;
+			++it;
 		}
-	} catch (_wexception const & e) {
-		throw wexception ("RealFSImpl::EnsureDirectory"); //, e.what());
+	} catch (const std::exception & e) {
+		throw wexception
+			("RealFSImpl::EnsureDirectoryExists(%s): %s",
+			 dirname.c_str(), e.what());
 	}
 }
 
@@ -396,26 +404,20 @@ void * RealFSImpl::Load(const std::string & fname, size_t & length) {
 		file = 0;
 
 		length = size;
-
-		return data;
 	} catch (...) {
 		if (file)
 			fclose(file);
-		if (data) free(data);
+		free(data);
 		throw;
 	}
+
+	return data;
 }
 
-#ifndef _MSC_VER
-/// \note The MAP_FAILED macro from glibc uses old-style cast. We can not fix
-/// this ourselves, so we temporarily turn the error into a warning. It is
-/// turned back into an error after this function.
-#pragma GCC diagnostic warning "-Wold-style-cast"
-#endif
 void * RealFSImpl::fastLoad
 	(const std::string & fname, size_t & length, bool & fast)
 {
-#ifdef WIN32
+#ifdef _WIN32
 	fast = false;
 	return Load(fname, length);
 #else
@@ -424,6 +426,8 @@ void * RealFSImpl::fastLoad
 	void * data = 0;
 
 #ifdef __APPLE__
+	file = open(fullname.c_str(), O_RDONLY);
+#elif defined (__FreeBSD__) || defined (__OpenBSD__)
 	file = open(fullname.c_str(), O_RDONLY);
 #else
 	file = open(fullname.c_str(), O_RDONLY|O_NOATIME);
@@ -434,22 +438,25 @@ void * RealFSImpl::fastLoad
 	data = mmap(0, length, PROT_READ, MAP_PRIVATE, file, 0);
 
 	//if mmap doesn't work for some strange reason try the old way
-	if (data == MAP_FAILED)
+#pragma GCC diagnostic warning "-Wold-style-cast"
+	if (data == MAP_FAILED) {
+#pragma GCC diagnostic error "-Wold-style-cast"
 		return Load(fname, length);
+	}
 
 	fast = true;
 
 	assert(data);
+#pragma GCC diagnostic warning "-Wold-style-cast"
 	assert(data != MAP_FAILED);
+#pragma GCC diagnostic error "-Wold-style-cast"
 
 	close(file);
 
 	return data;
 #endif
 }
-#ifndef _MSC_VER
-#pragma GCC diagnostic error "-Wold-style-cast"
-#endif
+
 
 /**
  * Write the given block of memory to the repository.

@@ -549,10 +549,8 @@ void Graphic::get_picture_size
 	h = bmp.get_h();
 }
 
-void Graphic::save_png(const PictureID & pic_index, StreamWrite * const sw)
+void Graphic::save_png_(Surface & surf, StreamWrite * sw) const
 {
-	Surface & surf = *get_picture_surface(pic_index);
-
 	// Save a png
 	png_structp png_ptr =
 		png_create_write_struct
@@ -560,6 +558,18 @@ void Graphic::save_png(const PictureID & pic_index, StreamWrite * const sw)
 
 	if (!png_ptr)
 		throw wexception("Graphic::save_png: could not create png struct");
+
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr) {
+		png_destroy_write_struct(&png_ptr, static_cast<png_infopp>(0));
+		throw wexception("Graphic::save_png: could not create png info struct");
+	}
+
+	// Set jump for error
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		png_destroy_write_struct(&png_ptr, &info_ptr);
+		throw wexception("Graphic::save_png: Error writing PNG!");
+	}
 
 	//  Set another write function. This is potentially dangerouse because the
 	//  flush function is internally called by png_write_end(), this will crash
@@ -572,64 +582,51 @@ void Graphic::save_png(const PictureID & pic_index, StreamWrite * const sw)
 		 sw,
 		 &Graphic::m_png_write_function, &Graphic::m_png_flush_function);
 
-	png_infop info_ptr = png_create_info_struct(png_ptr);
-
-	if (!info_ptr) {
-		png_destroy_write_struct(&png_ptr, static_cast<png_infopp>(0));
-		throw wexception("Graphic::save_png: could not create png info struct");
-	}
-
-	// Set jump for error
-	if (setjmp(png_jmpbuf(png_ptr))) {
-		png_destroy_write_struct(&png_ptr, &info_ptr);
-		throw wexception("Graphic::save_png: could not set png setjmp");
-	}
-
 	// Fill info struct
 	png_set_IHDR
 		(png_ptr, info_ptr, surf.get_w(), surf.get_h(),
 		 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
 		 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
-	// png_set_strip_16(png_ptr) ;
-
 	// Start writing
 	png_write_info(png_ptr, info_ptr);
-
-	// Strip data down
-	png_set_filler(png_ptr, 0, PNG_FILLER_AFTER);
-
-	png_set_packing(png_ptr);
-
 	{
-		uint32_t surf_w = surf.get_w();
-		uint32_t surf_h = surf.get_h();
+		uint16_t surf_w = surf.get_w();
+		uint16_t surf_h = surf.get_h();
 		uint32_t row_size = 4 * surf_w;
-		SDL_PixelFormat & format = const_cast<SDL_PixelFormat &>(surf.format());
 
-	// Write each row
-#ifndef HAVE_VARARRAY
-		std::auto_ptr<png_byte> row_buf(new png_byte[row_size]);
-		if (!row_buf.get()) throw wexception("Out of memory.");
-#endif
+		std::unique_ptr<png_byte[]> row(new png_byte[row_size]);
+
+		//Write each row
+		const SDL_PixelFormat & fmt = surf.format();
+		surf.lock();
+
+		// Write each row
 		for (uint32_t y = 0; y < surf_h; ++y) {
-#ifdef HAVE_VARARRAY
-			png_byte row[row_size];
-#else
-			png_bytep row = row_buf.get();
-#endif
-			png_bytep rowp = row;
-			for (uint32_t x = 0; x < surf_w; rowp += 4, ++x)
-				SDL_GetRGBA
-					(surf.get_pixel(x, y), &format,
-					 rowp + 0, rowp + 1, rowp + 2, rowp + 3);
-			png_write_row(png_ptr, row);
+			for (uint32_t x = 0; x < surf_w; ++x) {
+				RGBAColor color;
+				color.set(fmt, surf.get_pixel(x, y));
+				row[4 * x] = color.r;
+				row[4 * x + 1] = color.g;
+				row[4 * x + 2] = color.b;
+				row[4 * x + 3] = color.a;
+			}
+
+			png_write_row(png_ptr, row.get());
 		}
+
+		surf.unlock();
 	}
 
 	// End write
 	png_write_end(png_ptr, info_ptr);
 	png_destroy_write_struct(&png_ptr, &info_ptr);
+}
+
+void Graphic::save_png(const PictureID & pic_index, StreamWrite * const sw)
+{
+	Surface & surf = *get_picture_surface(pic_index);
+	save_png_(surf, sw);
 }
 
 /**

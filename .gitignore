@@ -1,2 +1,10 @@
+build/
+!build/macos
+!build/win32
+!build/build.txt
 *.pyc
 *.sw?
+VERSION
+data
+locale
+widelands

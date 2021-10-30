@@ -247,6 +247,8 @@ SDL_Surface * MNG_read_frame(SDL_RWops * const src)
 	SDL_Palette * palette;
 	volatile int ckey = -1;
 	png_color_16 * transv;
+	png_colorp png_palette = NULL;
+    int num_palette = 0;
 
 	/* Initialize the data we will clean up when we're done */
 	png_structp png_ptr = 0;
@@ -276,7 +278,7 @@ SDL_Surface * MNG_read_frame(SDL_RWops * const src)
 	 * the normal method of doing things with libpng).  REQUIRED unless you
 	 * set up your own error handlers in png_create_read_struct() earlier.
 	 */
-	if (setjmp(png_ptr->jmpbuf)) {
+	if (setjmp(png_jmpbuf(png_ptr))) {
 		SDL_SetError("Error reading the PNG file.");
 		goto done;
 	}
@@ -356,9 +358,9 @@ SDL_Surface * MNG_read_frame(SDL_RWops * const src)
 			Rmask = 0x000000FF;
 			Gmask = 0x0000FF00;
 			Bmask = 0x00FF0000;
-			Amask = (info_ptr->channels == 4) ? 0xFF000000 : 0;
+			Amask = (png_get_channels(png_ptr, info_ptr) == 4) ? 0xFF000000 : 0;
 		} else {
-			int const s = (info_ptr->channels == 4) ? 0 : 8;
+			int const s = (png_get_channels(png_ptr, info_ptr) == 4) ? 0 : 8;
 			Rmask = 0xFF000000 >> s;
 			Gmask = 0x00FF0000 >> s;
 			Bmask = 0x0000FF00 >> s;
@@ -369,7 +371,7 @@ SDL_Surface * MNG_read_frame(SDL_RWops * const src)
 		SDL_AllocSurface
 			(SDL_SWSURFACE,
 			 width, height,
-			 bit_depth * info_ptr->channels,
+			 bit_depth * png_get_channels(png_ptr, info_ptr),
 			 Rmask, Gmask, Bmask, Amask);
 	if (not surface) {
 		SDL_SetError("Out of memory");
@@ -416,12 +418,13 @@ SDL_Surface * MNG_read_frame(SDL_RWops * const src)
 				palette->colors[i].g = i;
 				palette->colors[i].b = i;
 			}
-		} else if (info_ptr->num_palette > 0) {
-			palette->ncolors = info_ptr->num_palette;
-			for (uint32_t i = 0; i < info_ptr->num_palette; ++i) {
-				palette->colors[i].b = info_ptr->palette[i].blue;
-				palette->colors[i].g = info_ptr->palette[i].green;
-				palette->colors[i].r = info_ptr->palette[i].red;
+		} else if ((png_get_PLTE(png_ptr, info_ptr, &png_palette, &num_palette) &
+                  PNG_INFO_PLTE) && num_palette > 0 && png_palette != NULL) {
+			palette->ncolors = num_palette;
+			for (uint32_t i = 0; i < num_palette; ++i) {
+				palette->colors[i].b = png_palette[i].blue;
+				palette->colors[i].g = png_palette[i].green;
+				palette->colors[i].r = png_palette[i].red;
 			}
 		}
 	}

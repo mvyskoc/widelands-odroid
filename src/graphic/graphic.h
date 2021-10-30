@@ -151,6 +151,9 @@ struct Graphic {
 
 	Surface * get_road_texture(int32_t roadtex);
 
+private:
+	void save_png_(Surface & surf, StreamWrite*) const;
+	
 protected:
 	/// Static function for png writing
 	static void m_png_write_function

@@ -110,7 +110,7 @@ find_package(Boost 1.35.0 REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 target_link_libraries(widelands ${Boost_LIBRARIES})
 
-set (PARAMETER_COMPILERFLAG_OLDSTYLECAST_EXTENDED "-Wold-style-cast -isystem ${Boost_INCLUDE_DIR}")
+set (PARAMETER_COMPILERFLAG_OLDSTYLECAST_EXTENDED "-Wold-style-cast")
 set (PARAMETER_COMPILERFLAG_OLDSTYLECAST "-Wold-style-cast")
 set (PARAMETER_COMPILERFLAG_GENERICWARNINGS "-Wno-attributes -Wall")
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -290,7 +290,7 @@ ENDIF (NOT WIN32)
 find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIR})
 
-find_package(Lua51 REQUIRED)
+find_package(Lua51 5.1.5 REQUIRED)
 include_directories(${LUA_INCLUDE_DIR})
 
 if (APPLE)
