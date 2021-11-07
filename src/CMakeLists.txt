@@ -115,7 +115,7 @@ target_link_libraries(widelands ${PNG_LIBRARY})
 target_link_libraries(widelands ${ZLIB_LIBRARY})
 target_link_libraries(widelands ${JPEG_LIBRARY})
 target_link_libraries(widelands ${TIFF_LIBRARY})
-target_link_libraries(widelands ${SDL_LIBRARY})
+
 target_link_libraries(widelands ${SDLIMAGE_LIBRARY})
 target_link_libraries(widelands ${SDLMIXER_LIBRARY})
 target_link_libraries(widelands ${SDLNET_LIBRARY})

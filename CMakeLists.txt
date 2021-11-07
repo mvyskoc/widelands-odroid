@@ -1,6 +1,15 @@
 project (widelands)
 
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.14)
+
+option(USE_SDL12_COMPAT "Replace SDL1.2 library with sdl12-compat" ON)
+
+set(USE_SDL12_SHARED_DEFAULT ON)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set(USE_SDL12_SHARED_DEFAULT OFF)
+endif()
+
+option(USE_SDL12_SHARED "Replace SDL1.2 with shared sdl12-compat" ${USE_SDL12_SHARED_DEFAULT})
 
 # Used as versioning, if WL_VERSION_STANDARD is definded.
 if (WL_VERSION_STANDARD)
@@ -108,7 +117,6 @@ set (Boost_USE_STATIC_LIBS   ON)
 set (Boost_USE_MULTITHREADED ON)
 find_package(Boost 1.35.0 REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
-target_link_libraries(widelands ${Boost_LIBRARIES})
 
 set (PARAMETER_COMPILERFLAG_OLDSTYLECAST_EXTENDED "-Wold-style-cast")
 set (PARAMETER_COMPILERFLAG_OLDSTYLECAST "-Wold-style-cast")
@@ -298,9 +306,6 @@ if (APPLE)
   include_directories(${INTL_INCLUDE_DIR})
 endif (APPLE)
 
-find_package(SDL REQUIRED)
-include_directories(${SDL_INCLUDE_DIR})
-
 find_package(SDL_image REQUIRED)
 include_directories(${SDLIMAGE_INCLUDE_DIR})
 
@@ -330,6 +335,9 @@ add_subdirectory(doc)
 #add_subdirectory(po)
 #add_subdirectory(pics)
 add_subdirectory(src)
+add_subdirectory(libext)
+
+target_link_libraries(widelands ${Boost_LIBRARIES})
 
 # install files to the correct locations here
 install(

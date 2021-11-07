@@ -1,0 +1,3 @@
+[submodule "libext/sdl12-compat"]
+	path = libext/sdl12-compat
+	url = git@github.com:mvyskoc/sdl12-compat.git
