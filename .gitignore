@@ -1,4 +1,7 @@
-build/
+!build/
+!build/ogs
+build/ogs/Widelands
+build/ogs/compile
 !build/macos
 !build/win32
 !build/build.txt
