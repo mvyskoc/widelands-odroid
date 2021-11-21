@@ -35,9 +35,9 @@ Clone repositiory with its submodules in `libext` folder
 git clone --recurse-submodules https://github.com/mvyskoc/widelands-odroid.git --single-branch
 ````
 
-Install dependency files, I hope I did not forget something
+For compilation install dependency files, I hope I did not forget something
 ````
-sudo apt install lua5.1 liblua5.1-0-dev liboggz2-dev libsdl-net1.2-dev libsdl2-net-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev  libsdl-gfx1.2-dev doxygen 
+sudo apt install lua5.1 liblua5.1-0-dev liboggz2-dev libsdl-net1.2-dev libsdl2-net-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev  libsdl-gfx1.2-dev gettext
 ````
 
 Start build process

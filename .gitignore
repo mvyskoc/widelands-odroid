@@ -1,7 +1,4 @@
-build/
-!build/macos
-!build/win32
-!build/build.txt
+build/compile
 *.pyc
 *.sw?
 VERSION
