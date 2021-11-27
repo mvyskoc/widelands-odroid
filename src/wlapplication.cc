@@ -105,6 +105,12 @@ using std::endl;
  */
 void WLApplication::setup_searchpaths(std::string argv0)
 {
+	std::string appdir = ""; //Path to root directory of AppImage
+
+    if (const char * v = std::getenv("APPDIR")) {
+        appdir = std::string(v);
+    }
+
 	try {
 #ifdef __APPLE__
 		// on mac, the default data dir is relative to the current directory
@@ -116,7 +122,7 @@ void WLApplication::setup_searchpaths(std::string argv0)
 		log ("Adding directory:%s\n", INSTALL_PREFIX "/" INSTALL_DATADIR);
 		g_fs->AddFileSystem //  see config.h
 			(FileSystem::Create
-			 	(std::string(INSTALL_PREFIX) + '/' + INSTALL_DATADIR));
+			 	(appdir + std::string(INSTALL_PREFIX) + '/' + INSTALL_DATADIR));
 #endif
 	}
 	catch (FileNotFound_error e) {}
@@ -131,7 +137,7 @@ void WLApplication::setup_searchpaths(std::string argv0)
 #ifndef WIN32
 		// if that fails, search in FHS standard location (obviously UNIX-only)
 		log ("Adding directory:/usr/share/games/widelands\n");
-		g_fs->AddFileSystem(FileSystem::Create("/usr/share/games/widelands"));
+		g_fs->AddFileSystem(FileSystem::Create(appdir + "/usr/share/games/widelands"));
 #else
 		//TODO: is there a "default dir" for this on win32 and mac ?
 #endif
@@ -756,6 +762,12 @@ void WLApplication::init_graphics
  */
 bool WLApplication::init_settings() {
 
+    std::string appdir = ""; //Path to root directory of AppImage
+
+    if (const char * v = std::getenv("APPDIR")) {
+        appdir = std::string(v);
+    }
+
 	//create a journal so that handle_commandline_parameters can open the
 	//journal files
 	journal = new Journal();
@@ -769,7 +781,7 @@ bool WLApplication::init_settings() {
 
 	// Set Locale and grab default domain
 	i18n::set_locale(s.get_string("language", ""));
-	i18n::set_localedir(s.get_string("localedir", INSTALL_LOCALEDIR));
+	i18n::set_localedir(s.get_string("localedir", (appdir + INSTALL_LOCALEDIR).c_str()));
 	i18n::grab_textdomain("widelands");
 
 	log("using locale %s\n", i18n::get_locale().c_str());
@@ -882,6 +894,7 @@ bool WLApplication::init_hardware() {
 	//add experimental video modes
 	if (m_gfx_hw_improvements) {
 #ifdef linux
+        videomode.push_back("kmsdrm");
 		videomode.push_back("svga");
 		videomode.push_back("fbcon");
 		videomode.push_back("directfb");

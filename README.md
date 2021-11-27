@@ -21,6 +21,8 @@ If you have computer with Open GL or you are windows user  look at the original 
   - Bugfix with loading locales. The the internal locale names were renamed, backported FileSystem functions for better support of relative paths.
 
   - Remove SDL1.2 libraray and replace it with static [sdl12-compat](https://github.com/libsdl-org/sdl12-compat.git)
+  
+  - Application use environment variable APPDIR as root folder for data and locale. If not defined it is same as /.
 
 # TODO
  - I will add configuration files for XboxDrv driver for Joystick / gamepad support. 
