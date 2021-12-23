@@ -14,7 +14,7 @@ sudo apt install liblua5.1-0-dev liboggz2-dev libsdl-net1.2-dev libsdl2-net-dev 
 mkdir -p "${BUILD_DIR}"
 
 cd "${BUILD_DIR}"
-cmake -DWL_PORTABLE=true ${CMAKELIST_PATH} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
+cmake -DWL_PORTABLE=true ${CMAKELIST_PATH} -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
 make
 make lang
 make install

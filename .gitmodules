@@ -1,3 +1,6 @@
 [submodule "libext/sdl12-compat"]
 	path = libext/sdl12-compat
 	url = git@github.com:mvyskoc/sdl12-compat.git
+[submodule "libext/xboxdrv"]
+	path = libext/xboxdrv
+	url = https://github.com/xboxdrv/xboxdrv.git
