@@ -46,3 +46,14 @@ Start build process
 ````
 build_and_run.sh
 ````
+
+The APPIMAGE can be build by following command.
+````
+  build/appimage/build_appimage.sh
+````
+All neccessary packages are automatically installed.\
+
+
+# Binary builds
+[Widelands-V15-1-aarch64.7z](https://webshare.cz/#/file/C8b2xJRlB9/widelands-v15-1-aarch64-7z)
+  
